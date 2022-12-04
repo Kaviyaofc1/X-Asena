@@ -32,7 +32,7 @@ Description : ${i.desc}\`\`\``
       let menu = `╭━━━━━ᆫ ${BOT_NAME} ᄀ━━━
 ┃ ⎆  *OWNER* :  ${OWNER_NAME}
 ┃ ⎆  *PREFIX* : ${prefix}
-┃ ⎆  *HOST NAME* :${hostname()}
+┃ ⎆  *HOST NAME* :${hostname().split("-")[0]}
 ┃ ⎆  *DATE* : ${date}
 ┃ ⎆  *TIME* : ${time}
 ┃ ⎆  *COMMANDS* : ${events.commands.length} 
@@ -64,18 +64,23 @@ Description : ${i.desc}\`\`\``
       });
       cmnd.sort();
       category.sort().forEach((cmmd) => {
-        menu += `\n┠─────〔${cmmd}〕\n╿\n╿╭╼╾╼╾╼╾╼╾╼╾╼╾╼╾╼`;
+        menu += `
+┃  ╭─────────────◆
+┃  │ ⦿---- ${cmmd} ----⦿
+┃  ╰┬────────────◆
+┃  ┌┤`;
         let comad = cmnd.filter(({ type }) => type == cmmd);
         comad.forEach(({ cmd }, num) => {
-          menu += `\n╿┠ ${cmd.trim()}`;
+          menu += `\n┃  │ ⛥  ${cmd.trim()}`;
         });
-        menu += `\n╿╰╼╾╼╾╼╾╼╾╼╾╼╾╼╾╼\n╿`;
+        menu += `\n┃  ╰─────────────◆`;
       });
 
-      menu += `\n╰╼╾╼╾╼╾╼╾╼╾╼╾╼╾╼╾╼`;
+      menu += ` ╰━━━━━━━━━━━──⊷\n`;
+      menu += `_🔖Send ${prefix}menu <command name> to get detailed information of specific command._\n*📍Eg:* _${prefix}menu plugin_`;
       return await message.client.sendMessage(message.jid, {
         image: { url: `https://wallpapercave.com/wp/wp3891779.jpg` },
-        caption: serif_B(menu.toUpperCase()),
+        caption: menu,
         footer: tiny(
           `X-asena Public Bot\nVersion : ${require("../package.json").version}`
         ),
@@ -128,8 +133,8 @@ command(
     });
     cmnd.sort();
     cmnd.forEach(({ cmd, desc }, num) => {
-      menu += `├ ${(num += 1)} *${tiny(cmd.trim())}*\n`;
-      if (desc) menu += `├ ${tiny("use : " + desc)}\n`;
+      menu += `├ ${(num += 1)} *${cmd.trim()}*\n`;
+      if (desc) menu += `├ ${"use : " + desc}\n`;
     });
     menu += `╰──────────────────────────`;
     return await message.reply(menu);

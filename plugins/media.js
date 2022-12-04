@@ -9,6 +9,7 @@ const {
   getUrl,
   isIgUrl,
   findMusic,
+  postJson,
 } = require("../lib/");
 const { yta, ytIdRegex, ytv } = require("../lib/yotube");
 const { search } = require("yt-search");
@@ -26,13 +27,6 @@ const stream = require("stream");
 const { promisify } = require("util");
 const pipeline = promisify(stream.pipeline);
 const fs = require("fs");
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
-
 
 Function(
   {
@@ -70,25 +64,6 @@ async function gimage(query, amount = 5) {
   });
 }
 
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
-
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
 command(
   {
     pattern: "photo",
@@ -105,12 +80,6 @@ command(
     return await message.sendMessage(buff, {}, "image");
   }
 );
-
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
 
 command(
   {
@@ -129,12 +98,6 @@ command(
     return await message.sendMessage(buffer, {}, "video");
   }
 );
-
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
 
 command(
   {
@@ -176,12 +139,6 @@ command(
   }
 );
 
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
 command(
   {
     pattern: "video",
@@ -207,14 +164,6 @@ command(
   }
 );
 
-
-
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
 command(
   {
     pattern: "mp3",
@@ -229,11 +178,6 @@ command(
     return await message.sendMessage(buff, { mimetype: "audio/mpeg" }, "audio");
   }
 );
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
 
 command(
   {
@@ -262,30 +206,6 @@ command(
       console.log(e);
       message.reply("_No content found_");
     }
-  }
-);
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
-command(
-  {
-    pattern: "insta ?(.*)",
-    fromMe: isPrivate,
-    desc: "downloads video from instagram",
-    type: "downloader",
-  },
-  async (message, match) => {
-    match = match || message.reply_message.text;
-    if (!match) return await message.reply("_Enter link_");
-    if (!match.includes("instagram.com"))
-      return await message.reply("_Invalid URL_");
-    let response = await getJson(
-      `https://x-asena-api.up.railway.app/ig?q=${match}`
-    );
-    message.sendFromUrl(response.result[0].url);
   }
 );
 
@@ -325,12 +245,6 @@ command(
   }
 );
 
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
 command(
   {
     pattern: "ytv",
@@ -352,12 +266,6 @@ command(
   }
 );
 
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
 command(
   {
     pattern: "yta",
@@ -375,7 +283,7 @@ command(
       });
       return await message.sendMessage(
         buff,
-        { mimetype: "audio/mpeg", quoted: message.data },
+        { mimetype: "audio/mpeg", quoted: message},
         "audio"
       );
     });

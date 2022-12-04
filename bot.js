@@ -1,15 +1,10 @@
-/* Copyright (C) 2022 X-Electra.
-Licensed under the  GPL-3.0 License;
-you may not use this file except in compliance with the License.
-X-Asena - X-Electra
-*/
-
 const {
   default: makeWASocket,
   Browsers,
   makeInMemoryStore,
   useMultiFileAuthState,
 } = require("@adiwajshing/baileys");
+const singleToMulti = require("./lib/singleToMulti");
 const fs = require("fs");
 const { serialize } = require("./lib/serialize");
 const { Message, Image, Sticker } = require("./lib/Base");
@@ -21,31 +16,31 @@ const config = require("./config");
 const { PluginDB } = require("./lib/database/plugins");
 const Greetings = require("./lib/Greetings");
 const { MakeSession } = require("./lib/session");
+const { async } = require("q");
+const { decodeJid } = require("./lib");
 const store = makeInMemoryStore({
   logger: pino().child({ level: "silent", stream: "store" }),
 });
-
-require("events").EventEmitter.defaultMaxListeners = 500;
-
-if (!fs.existsSync("./media/session.json")) {
-  MakeSession(config.SESSION_ID, "./media/session.json").then(
-    console.log("Vesrion : " + require("./package.json").version)
-  );
+async function Singmulti() {
+  if (!fs.existsSync(__dirname + "/session.json"))
+    await MakeSession(config.SESSION_ID, __dirname + "/session.json");
+  const { state } = await useMultiFileAuthState(__dirname + "/session");
+  await singleToMulti("session.json", __dirname + "/session", state);
 }
-fs.readdirSync("./lib/database/").forEach((plugin) => {
+//Singmulti()
+require("events").EventEmitter.defaultMaxListeners = 0;
+
+fs.readdirSync(__dirname + "/lib/database/").forEach((plugin) => {
   if (path.extname(plugin).toLowerCase() == ".js") {
-    require("./lib/database/" + plugin);
+    require(__dirname + "/lib/database/" + plugin);
   }
 });
-
 async function Xasena() {
+  const { state, saveCreds } = await useMultiFileAuthState(
+    __dirname + "/session"
+  );
   console.log("Syncing Database");
   await config.DATABASE.sync();
-  /*const { state, saveState } = await useSingleFileAuthState(
-    "./media/session.json",
-    pino({ level: "silent" })
-  );*/
-  const { state, saveCreds } = await useMultiFileAuthState("session");
   let conn = makeWASocket({
     logger: pino({ level: "silent" }),
     auth: state,
@@ -62,30 +57,24 @@ async function Xasena() {
       },
   });
   store.bind(conn.ev);
-  //store.readFromFile("./database/store.json");
   setInterval(() => {
     store.writeToFile("./database/store.json");
-  }, 30 * 60 * 1000);
+  }, 30 * 1000);
 
   conn.ev.on("creds.update", saveCreds);
-
+  conn.ev.on("contacts.update", (update) => {
+    for (let contact of update) {
+      let id = decodeJid(contact.id);
+      if (store && store.contacts)
+        store.contacts[id] = { id, name: contact.notify };
+    }
+  });
   conn.ev.on("connection.update", async (s) => {
     const { connection, lastDisconnect } = s;
     if (connection === "connecting") {
       console.log("X-Asena");
       console.log("ℹ️ Connecting to WhatsApp... Please Wait.");
     }
-
-    if (
-      connection === "close" &&
-      lastDisconnect &&
-      lastDisconnect.error &&
-      lastDisconnect.error.output.statusCode != 401
-    ) {
-      console.log(lastDisconnect.error.output.payload);
-      Xasena();
-    }
-
     if (connection === "open") {
       console.log("✅ Login Successful!");
       console.log("⬇️ Installing External Plugins...");
@@ -100,35 +89,39 @@ async function Xasena() {
               "./plugins/" + plugin.dataValues.name + ".js",
               response.body
             );
-            require("./plugins/" + plugin.dataValues.name + ".js");
+            require(__dirname + "/plugins/" + plugin.dataValues.name + ".js");
           }
         }
       });
 
       console.log("⬇️  Installing Plugins...");
 
-      fs.readdirSync("./plugins").forEach((plugin) => {
+      fs.readdirSync(__dirname + "/plugins").forEach((plugin) => {
         if (path.extname(plugin).toLowerCase() == ".js") {
-          require("./plugins/" + plugin);
+          require(__dirname + "/plugins/" + plugin);
         }
       });
       console.log("✅ Plugins Installed!");
       let str = `\`\`\`X-asena connected \nversion : ${
-        require("./package.json").version
+        require(__dirname + "/package.json").version
       }\nTotal Plugins : ${events.commands.length}\nWorktype: ${
         config.WORK_TYPE
       }\`\`\``;
       conn.sendMessage(conn.user.id, { text: str });
+
       try {
         conn.ev.on("group-participants.update", async (data) => {
           Greetings(data, conn);
         });
         conn.ev.on("messages.upsert", async (m) => {
           if (m.type !== "notify") return;
-          let ms = m.messages[0];
-          let msg = await serialize(JSON.parse(JSON.stringify(ms)), conn);
+          const ms = m.messages[0];
+          let msg = await serialize(JSON.parse(JSON.stringify(ms)), conn,store);
           if (!msg.message) return;
+          if (msg.body[1] && msg.body[1] == " ")
+            msg.body = msg.body[0] + msg.body.slice(2);
           let text_msg = msg.body;
+          msg.store = store;
           if (text_msg && config.LOGS)
             console.log(
               `At : ${
@@ -148,7 +141,10 @@ async function Xasena() {
               return;
             let comman;
             if (text_msg) {
-              comman = text_msg.trim().split(/ +/)[0];
+              comman = text_msg
+                ? text_msg[0] +
+                  text_msg.slice(1).trim().split(" ")[0].toLowerCase()
+                : "";
               msg.prefix = new RegExp(config.HANDLERS).test(text_msg)
                 ? text_msg.split("").shift()
                 : ",";
@@ -184,13 +180,24 @@ async function Xasena() {
         console.log(e + "\n\n\n\n\n" + JSON.stringify(msg));
       }
     }
+    if (connection === "close") {
+      console.log(s);
+      console.log(
+        "Connection closed with bot. Please put New Session ID again."
+      );
+      Xasena().catch((err) => console.log(err));
+    } else {
+      /*
+       */
+    }
   });
-  process.on("uncaughtException", (err) => {
+  process.on("uncaughtException", async (err) => {
     let error = err.message;
-    // conn.sendMessage(conn.user.id, { text: error });
+    await conn.sendMessage(conn.user.id, { text: error });
     console.log(err);
   });
 }
+
 setTimeout(() => {
-  Xasena();
+  Xasena().catch((err) => console.log(err));
 }, 3000);
